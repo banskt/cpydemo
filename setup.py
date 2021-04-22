@@ -112,6 +112,12 @@ def ext_modules():
         extra_compile_args = compile_args,
     )
     modules.append(module2)
+    module3 = dict(
+        name = 'cpydemo_one_sided_pval_lib',
+        sources = [os.path.join(clib_dir, 'one_sided_pval.c')],
+        extra_compile_args = compile_args,
+    )
+    modules.append(module3)
     return [Extension(**ext) for ext in modules]
 
 

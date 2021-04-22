@@ -16,9 +16,50 @@ pip install -e .
 
 Check the installation by running `cpydemo` from the command line:
 ```
-cpydemo -a 4.1 -b 3.5
+cpydemo --test # run all tests 
+cpydemo -a 3.2 -b 2.1 # print the sum and difference of the two numbers provided by the flags -a and -b
+cpydemo -h # help
 ```
-and it will print the sum and difference of the two numbers provided by the flags `-a` and `-b`.
+
+## Directory structure
+```
+.
+├── LICENSE
+├── MANIFEST.in
+├── pyproject.toml
+├── README.md
+├── setup.py
+└── src
+    ├── cpydemo
+    │   ├── clib
+    │   │   ├── dcdflib
+    │   │   │   ├── doc
+    │   │   │   │   ├── dcdflib.chs
+    │   │   │   │   ├── dcdflib.fdoc
+    │   │   │   │   └── dcdflib.h
+    │   │   │   ├── README
+    │   │   │   └── src
+    │   │   │       ├── cdflib.h
+    │   │   │       ├── dcdflib.c
+    │   │   │       └── ipmpar.c
+    │   │   ├── diff.c
+    │   │   ├── __init__.py
+    │   │   ├── Makefile
+    │   │   ├── Makefile.openblas
+    │   │   ├── one_sided_pval.c
+    │   │   └── sum.c
+    │   ├── __init__.py
+    │   ├── main.py
+    │   ├── stats
+    │   │   ├── cmath.py
+    │   │   └── __init__.py
+    │   └── utils
+    │       └── logs.py
+    ├── tests_cpydemo
+    │   ├── __init__.py
+    │   └── test_cpydemo.py
+    └── version.py
+```
 
 ## Resources
 1. Documentations
