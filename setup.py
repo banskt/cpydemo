@@ -98,16 +98,17 @@ cmdclass = {'bdist_egg': bdist_egg if 'bdist_egg' in sys.argv else bdist_egg_dis
 def ext_modules():
     modules = list()
     cwd = os.path.abspath(os.path.dirname(__file__))
+    clib_dir = os.path.join(cwd, "src/cpydemo/clib")
     compile_args = ["-O3"]
     module1 = dict(
         name = 'cpydemo_sum_lib',
-        sources = [os.path.join(cwd, 'src/cpydemo/lib/sum.c')],
+        sources = [os.path.join(clib_dir, 'sum.c')],
         extra_compile_args = compile_args,
     )
     modules.append(module1)
     module2 = dict(
         name = 'cpydemo_diff_lib',
-        sources = [os.path.join(cwd, 'src/cpydemo/lib/diff.c')],
+        sources = [os.path.join(clib_dir, 'diff.c')],
         extra_compile_args = compile_args,
     )
     modules.append(module2)

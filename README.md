@@ -3,7 +3,7 @@
 Demonstration of packaging a command line tool using Python and ctypes.
 It creates shared libraries from C code and calls the shared libraries using `numpy.ctypes`.
 ```
-pip install git+git://github.com/banskt/cpydemo.git#egg=cpydemo
+pip install git+git://github.com/banskt/cpydemo.git
 ```
 Or, clone the repository and install from the root directory
 ```
