@@ -23,6 +23,7 @@ cpydemo -h # help
 
 ## Directory structure
 ```
+$ tree . -I "__pycache__|*.egg-info"
 .
 ├── LICENSE
 ├── MANIFEST.in
