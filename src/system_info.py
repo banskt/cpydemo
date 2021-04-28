@@ -325,6 +325,11 @@ else:
     default_x11_include_dirs = ['/usr/X11R6/include', '/usr/X11/include',
                                 '/usr/include']
 
+    # Added by Saikat
+    # include environment lib dirs
+    default_lib_dirs += os.environ.get('LD_LIBRARY_PATH', '').split(os.pathsep)
+
+
     if os.path.exists('/usr/lib/X11'):
         globbed_x11_dir = glob('/usr/lib/*/libX11.so')
         if globbed_x11_dir:

@@ -27,6 +27,13 @@ For a quickstart, try:
 conda install pip git
 pip install git+git://github.com/banskt/cpydemo.git
 ```
+Note this will automatically install the required packages. 
+If you want to maintain the dependencies using conda,
+you can preinstall the dependencies before running `pip install` for `cpydemo`.
+```
+conda install numpy mpi4py pandas
+pip install git+git://github.com/banskt/cpydemo.git
+```
 You can also clone the repository, change to the cloned directory and install using pip
 ```
 git clone git@github.com:banskt/cpydemo.git
