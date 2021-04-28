@@ -257,7 +257,7 @@ def setup_package():
         cmdclass         = cmdclass,
         #setup_requires   = cfg_string_tolist('setup_requires', ','),
         python_requires  = req_py,
-        install_requires = [req_np],
+        install_requires = [req_np] + cfg_string_tolist('install_requires', ','),
         keywords         = cfg_string_tolist('keywords', ','),
     )
 
