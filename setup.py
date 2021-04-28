@@ -59,7 +59,8 @@ Possible ways of doing this:
 NOTE: I originally used get_info directly from numpy
     from numpy.distutils.system_info import get_info
 However, the info is incorrect for AMD / MKL, 
-hence I copied the files from numpy and fixed the bug.
+hence I copied the files from numpy and used a hack to 
+include Intel MKL on AMD machines.
 (see line 1186 in src/system_info.py)
 We can later move to numpy distribution of system_info
 when the bug is fixed.

@@ -1,24 +1,55 @@
 # CPyDemo
 
-Demonstration of packaging a command line tool using Python and ctypes.
-It creates shared libraries from C code and calls the shared libraries using `numpy.ctypes`.
+## About
+Demonstration of **packaging** a _command line tool_ written in Python and C.
+This minimum working example (MWE) provides implementation of the following features:
+  - use native C codes (instead of Cython) for the shared libraries.
+  - the shared libraries are loaded in Python using `numpy.ctypes`.
+  - use CBLAS routines for linear algebra in the C code.
+  - use `mpi4py` for MPI parallelization.
+  - call a third-party C library as `include` from the main C library.
+
+Packaging the MWE is done with `setuptools.setup()`.
+Compiling the CBLAS routines demands system-specific libraries, 
+includes, compile flags and macros.
+The `system_info` provided by the setuptools 
+in [`numpy`](https://github.com/numpy/numpy) package
+is a comprehensive source of such information. 
+Here, I have used their implementation.
+
+## Installation
+**Prerequisites.**
+  - any LAPACK library (MKL, OpenBLAS, libFLAME, Atlas, LAPACK (NetLIB))
+  - MPI library.
+
+For a quickstart, try:
 ```
+conda install pip git
 pip install git+git://github.com/banskt/cpydemo.git
 ```
-Or, clone the repository and install from the root directory
+You can also clone the repository, change to the cloned directory and install using pip
 ```
+git clone git@github.com:banskt/cpydemo.git
+cd cpydemo
 pip install .
 ```
-For development version, install using the `-e` flag ("editable").
+If you are developing, install using the `-e` flag ("editable"). 
+It allows real time changes in the code and the package does not need re-installing every time you make a change.
 ```
 pip install -e .
 ```
 
-Check the installation by running `cpydemo` from the command line:
+## Check installation
+If installation finished without error, the `cpydemo` command line tool will become available.
+You can check the command line tool using:
 ```
 cpydemo --test # run all tests 
 cpydemo -a 3.2 -b 2.1 # print the sum and difference of the two numbers provided by the flags -a and -b
 cpydemo -h # help
+```
+For testing MPI integration run 
+```
+mpirun -n 8 cpydemo --test
 ```
 
 ## Directory structure
