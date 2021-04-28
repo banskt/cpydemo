@@ -5,7 +5,8 @@ import unittest
 
 from .stats import cmath
 from .utils.logs import MyLogger
-from tests_cpydemo.test_cpydemo import TestCPyDemo
+from .stats.tests.test_cmath import TestCMath
+from cpydemo.unittest_tester import UnittestTester
 
 mlogger = MyLogger(__name__)
 
@@ -39,15 +40,11 @@ def target(opts):
 
 
 def run_unittests():
-    mlogger.info("Running tests")
-    test_classes = [TestCPyDemo]
-    loader = unittest.TestLoader()
-    test_list = [loader.loadTestsFromTestCase(tclass) for tclass in test_classes]
-    test_suite = unittest.TestSuite(test_list)
-    runner = unittest.TextTestRunner()
-    results = runner.run(test_suite)
+    tester = UnittestTester(TestCMath)
+    tester.execute()
+    del tester
     return
-    
+
 
 def main():
     opts = parse_args()

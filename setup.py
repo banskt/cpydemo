@@ -1,152 +1,267 @@
 import sys
 import os
-import setuptools
 import subprocess
-import atexit
-from setuptools.command.bdist_egg import bdist_egg
-from setuptools.command.install import install
-from setuptools.command.build_ext import build_ext
-from setuptools import Extension
+import setuptools
+import copy
+import textwrap
+from configparser import ConfigParser
 
+from setuptools.command.bdist_egg import bdist_egg
+from setuptools.command.install   import install
+from setuptools.command.build_ext import build_ext
+from setuptools                   import Extension
+from distutils                    import log
+
+'''
+--------------------------
+    SETTINGS
+--------------------------
+All settings are in configs.ini except version number.
+'''
+config = ConfigParser(delimiters=['='])
+config.read('configs.ini')
+cfg = config['metadata']
 sys.path.append('src')
 from version import __version__
 
-# Git version stuff
-sha = 'Unknown'
-here = os.path.dirname(os.path.abspath(__file__))
+def cfg_string_tolist(key, sep):
+    return [x.strip() for x in cfg[key].split(sep) if len(x) > 0]
 
-try:
-    sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=here).decode('ascii').strip()
-except Exception:
-    pass
+'''
+--------------------------
+    LINEAR ALGEBRA
+--------------------------
+We want to get information about the linear algebra library
+installed in the system.
+Hack: piggyback on the numpy setuptools, 
+      copy system_info.py and cpuinfo.py
+It provides information about various resources (libraries, library directories,
+include directories, etc.) in the system. Usage:
+    info_dict = get_info(<name>)
+  where <name> is a string 'atlas','x11','fftw','lapack','blas',
+  'lapack_src', 'blas_src', etc. For a complete list of allowed names,
+  see the definition of get_info() function in src/system_info.py
+  Returned info_dict is a dictionary which is compatible with
+  distutils.setup keyword arguments. If info_dict == {}, then the
+  asked resource is not available (system_info could not find it).
+  Several *_info classes specify an environment variable to specify
+  the locations of software. When setting the corresponding environment
+  variable to 'None' then the software will be ignored, even when it
+  is available in system.
+
+WARN: Numpy is not installed by default in a Python environment.
+
+We have to make sure `numpy` is installed before the setup.
+Possible ways of doing this:
+  - define `numpy` in 'setup_requires' (instead of 'install_requires') of setuptools.setup()
+  - `pyproject.toml`.
+
+NOTE: I originally used get_info directly from numpy
+    from numpy.distutils.system_info import get_info
+However, the info is incorrect for AMD / MKL, 
+hence I copied the files from numpy and fixed the bug.
+(see line 1186 in src/system_info.py)
+We can later move to numpy distribution of system_info
+when the bug is fixed.
+
+Obtain information about system Lapack.
+The default order for the libraries are:
+  - MKL
+  - OpenBLAS
+  - libFLAME
+  - ATLAS
+  - LAPACK (NetLIB)
+'''
+def numpy_get_lapack_info():
+    from system_info import get_info
+    return get_info('lapack_opt', 0)
 
 
-class Library(Extension):
-    def __init__ (self, **kw):
-        package = kw.pop('package', None)
-        dest_dir = kw.pop('dest_dir', None)
-        Extension.__init__(self, **kw)
-        self.package = package
-        self.dest_dir = dest_dir
+'''
+--------------------------
+    C LIBRARIES
+--------------------------
+The sources and target shared libraries are defined in the config file.
+Example:
+  clib_path = src/cpydemo/clibs
+  clib_sources = 
+    sum :: sum.c
+    diff :: diff.c
+LAPACK installation of the system is obtained from numpy.distutils.system_info (see above)
+and these sources are combined to obtain a list of extension modules
+'''
+
+def cfg_clib_todict(clibs, clib_dir, libprefix):
+    ''' 
+    Reads cfg input format of clibs
+    clibs is a list with strings, formatted as
+        name :: filea.c, fileb.c, ...
+    Returns dict {name: list<source_files>}
+    '''
+    clib_dict = dict()
+    for clib in clibs:
+        strsplit = clib.split('::')
+        libname = '{:s}_{:s}'.format(libprefix, strsplit[0].strip())
+        libsources = [x.strip() for x in strsplit[1].split(',')]
+        clib_dict[libname] = [os.path.join(clib_dir, x) for x in libsources]
+    return clib_dict
 
 
-class custom_install(install):
-    def run(self):
-        def _post_install():
-            print("Installing C libraries")
-            cmd_clean = ['make', 'clean', '-C', 'src/cpydemo/lib']
-            cmd_cmake = ['make', '-C', 'src/cpydemo/lib']
-            #process = subprocess.Popen(cmd_clean, shell=True)
-            #process.communicate()
-            #process = subprocess.Popen(cmd_cmake, shell=True)
-            #process.communicate()
-            subprocess.call(cmd_clean)
-            subprocess.call(cmd_cmake)
-            #def find_module_path():
-            #    for p in sys.path:
-            #        if os.path.isdir(p) and my_name in os.listdir(p):
-            #            return os.path.join(p, my_name)
-            #install_path = find_module_path()
-        atexit.register(_post_install)
-        install.run(self)
+def compile_extension_dict (name, sources, extra_libraries, extra_compile_args, **kw):
+
+    def dict_append(d, **kws):
+        for k, v in kws.items():
+            if k in d:
+                ov = d[k]
+                if isinstance(ov, str):
+                    d[k] = v
+                else:
+                    d[k].extend(v)
+            else:
+                d[k] = v
+
+    ext_args = copy.copy(kw)
+    ext_args['name'] = name
+    ext_args['sources'] = sources
+
+    if 'extra_info' in ext_args:
+        extra_info = ext_args['extra_info']
+        del ext_args['extra_info']
+        if isinstance(extra_info, dict):
+            extra_info = [extra_info]
+        for info in extra_info:
+            dict_append(ext_args, **info)
+
+    # Add extra libraries / compile_args 
+    libraries = ext_args.get('libraries', [])
+    ext_args['libraries'] = libraries + extra_libraries
+    ext_args['extra_compile_args'] = extra_compile_args
+    #
+    return Extension(**ext_args)
 
 
-def _post_install():
-    print('POST INSTALL')
+def ext_modules():
+    '''
+    Compiles the ext_modules
+    '''
+    cwd         = os.path.abspath(os.path.dirname(__file__))
+    clib_dir    = os.path.join(cwd, cfg['clib_path'])
+    clib_cfgs   = cfg_string_tolist('clib_sources', '\n')
+    lapack_info = numpy_get_lapack_info()
+    print(lapack_info)
+    # Prefix to be added to shared libraries
+    libprefix   = 'lib{:s}'.format(cfg['name'])
+    # 
+    extra_libraries = []
+    extra_compile_args = ['-O3', '-Werror=implicit-function-declaration']
+    #
+    clibs       = cfg_clib_todict(clib_cfgs, clib_dir, libprefix)
+    modules     = [compile_extension_dict(k, v, extra_libraries, extra_compile_args,
+                      **dict(extra_info = lapack_info)) \
+                      for k, v in clibs.items()]
+    return modules
 
 
-class new_install(install):
-    def __init__(self, *args, **kwargs):
-        super(new_install, self).__init__(*args, **kwargs)
-        atexit.register(_post_install)
-
-
+'''
+--------------------------
+    CUSTOM OVERRIDES
+--------------------------
+Example custom overrides,
+which can be useful to modify the build process.
+'''
 class custom_build_ext(build_ext):
+
     def build_extensions(self):
+        # self.compiler - the system compiler identified by setuptools / distutils
+        # print(vars(self.compiler))
+        # for compiler_arg in vars(self.compiler):
+        #     print (compiler_arg)
+        #     print (getattr(self.compiler, compiler_arg))
+
+        log.info("Building C modules")
+        for ext in self.extensions:
+            log.info(ext.name)
+        #    print (dir(ext))
+            property_list = ['define_macros', 'depends', 'export_symbols', 'extra_compile_args', 
+                             'extra_link_args', 'extra_objects', 'include_dirs', 'libraries', 
+                             'library_dirs', 'runtime_library_dirs', 'sources', 'swig_opts', 
+                             'undef_macros']
+            #log.info("Name: ", ext.name)
+            #log.info("Language: " , ext.language)
+            #log.info("py_limited_api: ", ext.py_limited_api)
+            #for info in property_list:
+            #    log.info(f"{info}: " + ", ".join(getattr(ext, info)))
         build_ext.build_extensions(self)
 
 
-## def ext_modules():
-##     modules = []
-##     csum_dll = dict(
-##         name = '',
-##         sources = ['lib/cmath.c'],
-##         depends = (),
-##         configure = ,
-##         extra_compile_args = ["-O3"],
-##         )
-##     modules.append(csum_dll)
-##     return modules
-
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
-
 class bdist_egg_disabled(bdist_egg):
-    """Disabled version of bdist_egg
+    '''
+    Disabled version of bdist_egg
     Prevents setup.py install performing setuptools' default easy_install,
     which it should never ever do.
-    """
+    '''
     def run(self):
         sys.exit("ERROR: aborting implicit building of eggs. Use \"pip install .\" to install from source.")
 
-cmdclass = {'bdist_egg': bdist_egg if 'bdist_egg' in sys.argv else bdist_egg_disabled,
-            #'install': custom_install,
-            #'install': new_install,
-            #'build_ext': custom_build_ext,
-           }
+'''
+--------------------------
+    SETUP
+--------------------------
+'''
+def setup_package():
 
-def ext_modules():
-    modules = list()
-    cwd = os.path.abspath(os.path.dirname(__file__))
-    clib_dir = os.path.join(cwd, "src/cpydemo/clib")
-    compile_args = ["-O3"]
-    module1 = dict(
-        name = 'cpydemo_sum_lib',
-        sources = [os.path.join(clib_dir, 'sum.c')],
-        extra_compile_args = compile_args,
-    )
-    modules.append(module1)
-    module2 = dict(
-        name = 'cpydemo_diff_lib',
-        sources = [os.path.join(clib_dir, 'diff.c')],
-        extra_compile_args = compile_args,
-    )
-    modules.append(module2)
-    module3 = dict(
-        name = 'cpydemo_one_sided_pval_lib',
-        sources = [os.path.join(clib_dir, 'one_sided_pval.c')],
-        extra_compile_args = compile_args,
-    )
-    modules.append(module3)
-    return [Extension(**ext) for ext in modules]
+    if cfg['release_branch'] == 'True':
+        req_np = 'numpy>={},<{}'.format(cfg['min_numpy'], cfg['max_numpy'])
+        req_py = '>={},<{}'.format(cfg['min_python'], cfg['max_python'])
+    else:
+        req_np = 'numpy>={}'.format(cfg['min_numpy'])
+        req_py = '>={}'.format(cfg['min_python'])
+
+    with open("README.md", "r", encoding="utf-8") as fh:
+        long_description = fh.read()
+
+    cmdclass = {
+        'bdist_egg': bdist_egg if 'bdist_egg' in sys.argv else bdist_egg_disabled,
+        'build_ext': custom_build_ext,
+    }
 
 
-setuptools.setup(
-    name             = "cpydemo",
-    version          = __version__,
-    author           = "Saikat Banerjee",
-    author_email     = "bnrj.saikat@gmail.com",
-    description      = "Example for packaging command line tool written in Python and C",
-    long_description = long_description,
-    long_description_content_type = "text/markdown",
-    license          = "MIT",
-    url              = "https://github.com/banskt/cpydemo",
-    project_urls     = {
-        "Bug Tracker": "https://github.com/banskt/cpydemo/issues",
-    },
-    classifiers      = [
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-    ],
-    packages         = setuptools.find_packages(where = "src"),
-    package_dir      = {"": "src"},
-    entry_points     = {'console_scripts': ['cpydemo = cpydemo.main:main']},
-    #ext_modules      = [Extension(**ext) for ext in ext_modules()],
-    ext_modules      = ext_modules(),
-    python_requires  = ">=3.6",
-    install_requires = [
-        "numpy>=1.19.4",
-    ],
-    cmdclass         = cmdclass,
-)
+    print(numpy_get_lapack_info())
+
+    #cfg_str_keys  = 'name author author_email description copyright license'.split()
+    #cfg_url_keys  = 'main_url download_url git_url docs_url source_code_url bug_tracker_url'.split()
+    #cfg_list_keys = 'keywords setup_requires install_requires contributiors'.split()
+
+    metadata = dict(
+        name             = cfg['name'],
+        version          = __version__,
+        author           = cfg['author'],
+        author_email     = cfg['author_email'],
+        description      = cfg['description'],
+        long_description = long_description,
+        long_description_content_type = "text/markdown",
+        license          = cfg['license'],
+        url              = cfg['main_url'],
+        download_url     = cfg['download_url'],
+        project_urls     = {
+            "Bug Tracker":   cfg['bug_tracker_url'],
+            "Documentation": cfg['docs_url'],
+            "Source Code" :  cfg['source_code_url'],
+        },
+        classifiers      = cfg_string_tolist('classifiers', '\n'),
+        packages         = setuptools.find_packages(where = "src"),
+        package_dir      = {"": "src"},
+        entry_points     = {'console_scripts': ['cpydemo = cpydemo.main:main']},
+        ext_modules      = ext_modules(),
+        cmdclass         = cmdclass,
+        #setup_requires   = cfg_string_tolist('setup_requires', ','),
+        python_requires  = req_py,
+        install_requires = [req_np],
+        keywords         = cfg_string_tolist('keywords', ','),
+    )
+
+    setuptools.setup(**metadata)
+
+
+if __name__ == '__main__':
+    setup_package()

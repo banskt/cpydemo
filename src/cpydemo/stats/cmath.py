@@ -10,14 +10,16 @@ def find_module_path(libname):
             return p
 
 
-def get_clib(libname):
+def get_clib(cname):
+    libprefix = 'libcpydemo'
+    libname = '{:s}_{:s}'.format(libprefix, cname)
     _path = find_module_path(libname)
     clib = np.ctypeslib.load_library(libname, _path)
     return clib
     
 
 def c_sum(a, b):
-    csum = get_clib('cpydemo_sum_lib').sum
+    csum = get_clib('sum').sum
     csum.restype = ctypes.c_double
     csum.argtypes = [ctypes.c_double, ctypes.c_double]
     x = csum(a, b)
@@ -25,7 +27,7 @@ def c_sum(a, b):
 
 
 def c_diff(a, b):
-    cdiff = get_clib('cpydemo_diff_lib').diff
+    cdiff = get_clib('diff').diff
     cdiff.restype = ctypes.c_double
     cdiff.argtypes = [ctypes.c_double, ctypes.c_double]
     x = cdiff(a, b)
@@ -33,9 +35,27 @@ def c_diff(a, b):
 
 
 def c_pval(x, mu, sigma):
-    cpval = get_clib('cpydemo_one_sided_pval_lib').one_sided_pval
+    cpval = get_clib('one_sided_pval').one_sided_pval
     cpval.restype = ctypes.c_double
     cpval.argtypes = [ctypes.c_double, ctypes.c_double, ctypes.c_double]
     p = cpval(x, mu, sigma)
     return p
 
+
+def c_matmul(X, Y):
+    cmatmul = get_clib('matmul').matmulAB
+    cmatmul.restype = ctypes.c_bool
+    cmatmul.argtypes = [
+        np.ctypeslib.ndpointer(ctypes.c_double, ndim=1, flags='C_CONTIGUOUS, ALIGNED'),
+        np.ctypeslib.ndpointer(ctypes.c_double, ndim=1, flags='C_CONTIGUOUS, ALIGNED'),
+        np.ctypeslib.ndpointer(ctypes.c_double, ndim=1, flags='C_CONTIGUOUS, ALIGNED'),
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+    ]
+    m, k = X.shape
+    k, n = Y.shape
+    assert X.shape[1] == Y.shape[0], "Incorrect dimensions for matrix multiplication"
+    Z = np.zeros((m, n))
+    success = cmatmul(X.reshape(-1), Y.reshape(-1), Z.reshape(-1), m, k, n)
+    return Z.reshape(m, n)

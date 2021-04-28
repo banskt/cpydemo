@@ -1,11 +1,35 @@
-#ifdef INTEL_MKL_VERSION
-    #include <mkl.h>
+/* 
+ * CPyDemo
+ *
+ * Example of including MKL special functions.
+ * These functions are not available in CBLAS routines
+ * of other implementations such as LAPACK.
+ * Including "mkl.h" is not possible as it is not provided
+ * by Python MKL 
+ * Hence, the header needs to be defined in place as shown here.
+ */
+
+#include <stdlib.h>
+
+/* default MKL macro from numpy */
+#ifdef SCIPY_MKL_H
+    /*
+     * cannot include mkl.h
+     * because miniconda/mkl does not provide this include
+     * include <mkl.h>
+     *
+     * Define the header manually
+     */
+    typedef size_t  INT;
+    #define MKL_INT INT // this tells MKL about user's MKL_INT type
+    void vdCdfNorm(const MKL_INT *n, const double a[], double r[]);
+
     void my_cdfnorm( double* X, double* P) {
     	vdCdfNorm( 1, X, P );
     }
-#else
-    #include <cblas.h>
-    #include <cblas_f77.h>
+/* default CBLAS macro from numpy */
+#elif HAVE_CBLAS
+    #include "npy_cblas.h"
     #include "dcdflib/src/dcdflib.c"
     #include "dcdflib/src/ipmpar.c"
     void my_cdfnorm( double* X, double* P) {

@@ -1,17 +1,19 @@
 import os
 import unittest
 import scipy.stats as sc_stats
+import numpy as np
 
 from cpydemo.stats import cmath
 from cpydemo.utils.logs import MyLogger
+import cpydemo.unittest_tester as tester
 
 mlogger = MyLogger(__name__)
 
-class TestCPyDemo(unittest.TestCase):
+class TestCMath(unittest.TestCase):
 
 
     def __init__(self, *args, **kwargs):
-        super(TestCPyDemo, self).__init__(*args, **kwargs)
+        super(TestCMath, self).__init__(*args, **kwargs)
         self.a = 3.5
         self.b = 2.4
 
@@ -39,5 +41,17 @@ class TestCPyDemo(unittest.TestCase):
         self.assertAlmostEqual(x, p, places = 3, msg = "Error in cmath.c_pval")
 
 
+    def test_matmul(self):
+        m = 100
+        k = 80
+        n = 200
+        A = np.random.normal(0, 1, size = m * k).reshape(m, k)
+        B = np.random.normal(0, 1, size = k * n).reshape(k, n)
+        C = cmath.c_matmul(A, B)
+        Ctrue = np.dot(A, B)
+        self.assertTrue(np.allclose(C, Ctrue), msg = "Matrix multiplication do not match numpy")
+        mlogger.info("Matrix multiplication successful")
+
+
 if __name__ == '__main__':
-    unittest.main()
+    tester.main()

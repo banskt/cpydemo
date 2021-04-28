@@ -24,15 +24,22 @@ cpydemo -h # help
 ## Directory structure
 ```
 $ tree . -I "__pycache__|*.egg-info"
+
 .
+├── configs.ini
+├── dev
+│   ├── getcpu.py
+│   ├── setup-old.py
+│   └── showmkl.py
 ├── LICENSE
 ├── MANIFEST.in
 ├── pyproject.toml
 ├── README.md
 ├── setup.py
 └── src
+    ├── cpuinfo.py
     ├── cpydemo
-    │   ├── clib
+    │   ├── clibs
     │   │   ├── dcdflib
     │   │   │   ├── doc
     │   │   │   │   ├── dcdflib.chs
@@ -47,19 +54,29 @@ $ tree . -I "__pycache__|*.egg-info"
     │   │   ├── __init__.py
     │   │   ├── Makefile
     │   │   ├── Makefile.openblas
+    │   │   ├── matmul.c
+    │   │   ├── npy_cblas_base.h
+    │   │   ├── npy_cblas.h
     │   │   ├── one_sided_pval.c
     │   │   └── sum.c
+    │   ├── hellompi.py
     │   ├── __init__.py
     │   ├── main.py
     │   ├── stats
     │   │   ├── cmath.py
-    │   │   └── __init__.py
+    │   │   ├── __init__.py
+    │   │   ├── __init__.pyc
+    │   │   └── tests
+    │   │       ├── __init__.py
+    │   │       ├── __init__.pyc
+    │   │       └── test_cmath.py
+    │   ├── unittest_tester.py
     │   └── utils
+    │       ├── __init__.py
     │       └── logs.py
-    ├── tests_cpydemo
-    │   ├── __init__.py
-    │   └── test_cpydemo.py
+    ├── system_info.py
     └── version.py
+
 ```
 
 ## Resources
@@ -73,5 +90,5 @@ $ tree . -I "__pycache__|*.egg-info"
  - [Post-install scripts with Python setuptools](https://stackoverflow.com/questions/20288711/post-install-script-with-python-setuptools?answertab=votes#tab-top)
 3. Example packaing
  - [`jasmcaus/caer`](https://github.com/jasmcaus/caer)
- - [`numpy/numpy`]()
+ - [`numpy/numpy`](https://github.com/numpy/numpy)
  - [`mpi4py/mpi4py`](https://github.com/mpi4py/mpi4py)
