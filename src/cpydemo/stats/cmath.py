@@ -59,3 +59,25 @@ def c_matmul(X, Y):
     Z = np.zeros((m, n))
     success = cmatmul(X.reshape(-1), Y.reshape(-1), Z.reshape(-1), m, k, n)
     return Z.reshape(m, n)
+
+
+def c_svd(X):
+    csvd = get_clib('svd').svd
+    csvd.restype = ctypes.c_bool
+    csvd.argtypes = [
+        np.ctypeslib.ndpointer(ctypes.c_double, ndim=1, flags='C_CONTIGUOUS, ALIGNED'),
+        np.ctypeslib.ndpointer(ctypes.c_double, ndim=1, flags='C_CONTIGUOUS, ALIGNED'),
+        np.ctypeslib.ndpointer(ctypes.c_double, ndim=1, flags='C_CONTIGUOUS, ALIGNED'),
+        np.ctypeslib.ndpointer(ctypes.c_double, ndim=1, flags='C_CONTIGUOUS, ALIGNED'),
+        ctypes.c_int,
+        ctypes.c_int,
+    ]
+    m, n = X.shape
+    k = min(m, n)
+    cX = X.copy().reshape(-1)
+    cS = np.zeros(k).reshape(-1)
+    cU = np.zeros((m, k)).reshape(-1)
+    cVT = np.zeros((k, n)).reshape(-1)
+    success = csvd(cX, cS, cU, cVT, m, n)
+
+    return cU.reshape(m, k), cS, cVT.reshape(k, n)

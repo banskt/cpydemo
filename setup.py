@@ -22,6 +22,7 @@ config = ConfigParser(delimiters=['='])
 config.read('configs.ini')
 cfg = config['metadata']
 sys.path.append('src')
+sys.path.append('src/{:s}'.format(cfg['name']))
 from version import __version__
 
 def cfg_string_tolist(key, sep):

@@ -5,7 +5,8 @@ Demonstration of **packaging** a _command line tool_ written in Python and C.
 This minimum working example (MWE) provides implementation of the following features:
   - use native C codes (instead of Cython) for the shared libraries.
   - the shared libraries are loaded in Python using `numpy.ctypes`.
-  - use CBLAS routines for linear algebra in the C code.
+  - use CBLAS routine for linear algebra in the C code.
+  - use LAPACK C interface routine (e.g. `LAPACKE_dgesvd`)
   - use `mpi4py` for MPI parallelization.
   - call a third-party C library as `include` from the main C library.
 
@@ -31,7 +32,7 @@ Note this will automatically install the required packages.
 If you want to maintain the dependencies using conda,
 you can preinstall the dependencies before running `pip install` for `cpydemo`.
 ```
-conda install numpy mpi4py pandas
+conda install numpy scipy mpi4py
 pip install git+git://github.com/banskt/cpydemo.git
 ```
 You can also clone the repository, change to the cloned directory and install using pip

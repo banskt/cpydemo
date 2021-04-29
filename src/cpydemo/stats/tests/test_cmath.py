@@ -53,5 +53,18 @@ class TestCMath(unittest.TestCase):
         mlogger.info("Matrix multiplication successful")
 
 
+    def test_svd(self):
+        m = 4
+        n = 3
+        A = np.random.normal(0, 1, size = m * n).reshape(m, n)
+        np_U, np_S, np_VT = np.linalg.svd(A, full_matrices = False)
+        U, S, VT = cmath.c_svd(A)
+        check_sv = np.allclose(S, np_S)
+        check_reconstruct = np.allclose(A, np.dot(U, np.dot(np.diag(S), VT)))
+        self.assertTrue(check_sv, msg = "SVD do not match numpy.linalg.svd")
+        self.assertTrue(check_reconstruct, msg = "SVD from C cannot reconstruct original matrix")
+        mlogger.info("SVD successful")
+
+
 if __name__ == '__main__':
     tester.main()

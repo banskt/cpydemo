@@ -10,7 +10,8 @@ from mpi4py import MPI
 from .stats import cmath
 from .utils.logs import MyLogger
 from .stats.tests.test_cmath import TestCMath
-from cpydemo.unittest_tester import UnittestTester
+from .unittest_tester import UnittestTester
+from .utils import project
 
 mlogger = MyLogger(__name__)
 
@@ -30,6 +31,10 @@ def parse_args():
                         dest = 'test',
                         action='store_true',
                         help='Perform unit tests')
+    parser.add_argument('--version',
+                        dest = 'version',
+                        action = 'store_true',
+                        help='Print version number')
     res = parser.parse_args()
     return res
 
@@ -73,6 +78,8 @@ def main():
     if rank == 0:
         if opts.test:
             run_unittests()
+        elif opts.version:
+            print ("CPyDemo version {:s}".format(project.version()))
         else:
             target(opts)
     MPI.Finalize()
